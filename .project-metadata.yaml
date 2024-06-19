@@ -70,6 +70,3 @@ tasks:
     memory: 4
     environment:
       TASK_TYPE: CREATE
-    schedule:
-      - type: Dependent
-      - depends_on: Pull and Convert HTMLS to TXT
