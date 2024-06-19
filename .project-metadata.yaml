@@ -58,3 +58,15 @@ tasks:
     memory: 4
     environment:
       TASK_TYPE: CREATE/RUN_JOB
+
+  - type: create_job
+    name: Populate Pinecone
+    entity_label: populate_pinecone
+    script: 2_populate_vector_db/pinecone_vectordb_insert.py
+    arguments: None
+    short_summary: Create job populate pinecone
+    long_summary: Create job populate pinecone
+    cpu: 2
+    memory: 4
+    environment:
+      TASK_TYPE: CREATE
