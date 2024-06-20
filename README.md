@@ -69,16 +69,40 @@ In this first section, we'll interact with a model (Anthropic's Claude) via Amaz
 
 ## 2. Scrape and ingest data and populate Pinecone DB
 
-In this section you will define a CML _Job_ to load text data into [Pinecone](https://www.pinecone.io/) vector database. Jobs are responsible for running scripts in a specific and isolated environment (just like sessions from exercise 1).  Jobs can run on a schedule, on-demand, or be joined together into pipelines. 
+>**2a.** Note that your project already has one job, namely _Pull and Convert HTMLS to TXT_. This job will be a dependency of a new job you create. You do not need to run it just yet.
+![Alt text](./assets/html-scrape-1.png)
 
-For this exercise html links are already provided in  ```2_populate_vector_db/html_links.txt```. These sample links point to various pages of [Cloudera's CML documentation](https://docs.cloudera.com/machine-learning/cloud/). In this lab you have an option to point to other URL location(s) by updating this file. However, any time you update the links you will also need to rerun the job. 
+>**2b.** In the left sidebar, click on _Jobs_.
+![Alt text](./assets/html-scrape-jobs.png)
 
-There are two ways to create a JOB in CML: via the UI or programmatically with [CML's APIv2](https://docs.cloudera.com/machine-learning/cloud/api/topics/ml-api-v2.html). In production you would likely opt for the second option. For this exercise, the job was already created for you.
+>**2c.** Press _New Job_ in the top right corner.
+![Alt text](./assets/html-scrape-new-job.png)
 
->**2a.** Start the following jobs in this order.
+>**2d.** On the next screen, give your job a name.
 
->> Pull and convert HTMLS to txt
->> Populate Pinecone
+>**2e.** Under **Script** browse to ```2_populate_vector_db/pinecone_vectordb_insert.py``` by clicking on the folder icon.
+
+> **2f.** Ensure you've selected the right runtime settings, per below:
+>  For **Editor** select _JupyterLab_ 
+> For **Kernel** select _Python 3.10_
+> For **Edition** select _Nvidia GPU_ 
+
+>**2g.** Under **Schedule**, select _Dependent_, then select the job _Pull and Convert HTMLS to TXT_. ![Alt text](./assets/html-scrape-job-parameters.png)
+
+> **2h.** Finally click _Create Job_, scrolling all the way down.
+
+Great! Now you've created your very own CML job! You can run the scraping job and the populate vector DB job will kick off automatically after that. 
+
+>**2g.** Go back to _Jobs_ (as shown above in substep 2b)
+
+>**2h.** Click the _Run as_ button for the _Pull and Convert HTMLS to TXT_ job. Note that jobs can also be triggered using a [machine user](https://docs.cloudera.com/management-console/cloud/user-management/topics/mc-machine-user.html) (a.k.a. service account).   
+![Alt text](./assets/html-scrape-run-job.png)
+
+After just over a minute you should see both of your jobs completed successfully. While the jobs are running you can review the code in ```2_populate_vector_db/pinecone_vectordb_insert.py```, by navigating to _Overview_ > _Files_ in a new tab.
+![Alt text](./assets/html-scrape-post-run-job.png)
+
+:pencil2: CML jobs give users an ability to automate recurrent tasks and streamline the workflow for a machine learning project. You have seen CML interact with a popular 3rd party vector database within an isolated compute framework. 
+
 
 ![Alt text](./assets/step-2.png)
 
