@@ -82,7 +82,7 @@ There are two ways to create a JOB in CML: via the UI or programmatically with [
 
 ![Alt text](./assets/step-2.png)
 
-## 3. Explore your data via Pinecone DB
+## 3. Explore your data via Pinecone DB [BONUS]
 
 In this exercise you will interact with the knowledge base that has been loaded in a Pinecone vector database in [Exercise 2](#2-scrape-and-ingest-data-and-populate-pinecone-db). 
 
@@ -163,7 +163,7 @@ You will recall that in [exercise 2](#2-scrape-and-ingest-data-and-populate-pine
 
 :pencil2: To support automation CML provides a robust API that supports most of the operations that can be done through the UI. This enables practitioners to plug in to existing CI/CD pipelines that exist in the enterprise.
 
-## 6. Langchain
+## 6. Langchain [BONUS]
 
 So far we have seen a number of components that come together to allow us to interact with an LLM, the vector database, the application, the code base, and finally the underlying platform. Langchain is a powerful library that offers a flexible way to chain those (plus more) components together. In this lab we'll look at a particular use of Langchain. For more information see : [Intro to Langchain](https://python.langchain.com/docs/get_started/introduction).
 
@@ -183,7 +183,7 @@ The beauty of using langchain for our example is once we've created the chain ob
 
 :pencil2: In this exercise you've gotten familiar with a popular chaining package and applied it in a CML session to build a chain for interacting with Bedrock, Chroma, and a specific prompt template. 
 
-## 7. Use a locally hosted Mistral model
+## 7. Use a locally hosted Mistral model [BONUS]
 
 Many organizations are hesitant to use 3rd party LLM providers, instead opting to host open source models internally, to leverage in their use cases. CML provides a convenient facility to do this via _Model Deployments_ functionality. This provides a scalable and secure way to host LLMs and classic inference models in an isolated and fully controlled CML environment. 
 
