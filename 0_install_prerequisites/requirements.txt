@@ -28,7 +28,7 @@ urllib3==1.25.4
 #
 ## Pinecone/Vector DB Requirements
 #pinecone-client==4.0.0
-pinecone-client==2.2.4
+pinecone-client==3.2.2
 sentence-transformers==2.2.2
 
 ## Chroma Vector DB Requirements
@@ -46,3 +46,5 @@ git+https://github.com/huggingface/peft.git@0b62b4378b4ce9367932c73540349da9a41b
 awscli==1.29.57
 boto3==1.28.57
 botocore==1.31.57
+
+pdfminer.six

@@ -15,8 +15,10 @@ import boto3
 from botocore.config import Config
 import chromadb
 from chromadb.utils import embedding_functions
-
 from huggingface_hub import hf_hub_download
+import shutil
+
+
 
 # Set any of these to False, if not using respective parts of the lab
 USE_PINECONE = True 
@@ -154,30 +156,67 @@ def main():
     DESC = "This AI-powered assistant showcases the flexibility of Cloudera Machine Learning to work with 3rd party solutions for LLMs and Vector Databases, as well as internally hosted models and vector DBs. The prototype does not yet implement chat history and session context - every prompt is treated as a brand new one."
     
     # Create the Gradio Interface
-    demo = gr.ChatInterface(
+    demo = gr.Interface(
         fn=get_responses, 
-        #examples=[["What is Cloudera?", "AWS Bedrock Claude v2.1", 0.5, "100"], ["What is Apache Spark?", 0.5, "100"], ["What is CML HoL?", 0.5, "100"]], 
+        inputs=[
+            gr.Textbox(label="Enter your query here"), 
+            gr.Radio(['Local Mistral 7B', 'AWS Bedrock Claude v2.1'], label="Select Foundational Model", value="AWS Bedrock Claude v2.1"), 
+            gr.Slider(minimum=0.01, maximum=1.0, step=0.01, value=0.5, label="Select Temperature (Randomness of Response)"),
+            gr.Radio(["50", "100", "250", "500", "1000"], label="Select Number of Tokens (Length of Response)", value="250"),
+            gr.Radio(['None', 'Pinecone', 'Chroma'], label="Vector Database Choices", value="None")
+        ],
+        outputs="text",
         title="Enterprise Custom Knowledge Base Chatbot",
-        description = DESC,
-        additional_inputs=[gr.Radio(['Local Mistral 7B', 'AWS Bedrock Claude v2.1'], label="Select Foundational Model", value="AWS Bedrock Claude v2.1"), 
-                           gr.Slider(minimum=0.01, maximum=1.0, step=0.01, value=0.5, label="Select Temperature (Randomness of Response)"),
-                           gr.Radio(["50", "100", "250", "500", "1000"], label="Select Number of Tokens (Length of Response)", value="250"),
-                           gr.Radio(['None', 'Pinecone', 'Chroma'], label="Vector Database Choices", value="None")],
-        retry_btn = None,
-        undo_btn = None,
-        clear_btn = None,
-        autofocus = True
-        )
-
-    # Launch gradio app
+        description=DESC,
+    )
+    
+    # Create upload button below the submit button
+    upload_demo = gr.Interface(
+        fn=handle_pdf_upload,
+        inputs=gr.File(label="Upload PDF(s)", multiselect=True),  # Allow multiple file uploads
+        outputs="text",
+    )
+    
+    # Combine the two interfaces
+    combined_demo = gr.TabbedInterface(
+        [demo, upload_demo],
+        ["Chat Interface", "Upload PDF"]
+    )
+     # Launch gradio app
     print("Launching gradio app")
-    demo.launch(share=True,   
-                enable_queue=True,
-                show_error=True,
-                server_name='127.0.0.1',
-                server_port=int(os.getenv('CDSW_READONLY_PORT'))
-               )
+    combined_demo.launch(share=True,   
+                         enable_queue=True,
+                         show_error=True,
+                         server_name='127.0.0.1',
+                         server_port = int(os.getenv('CDSW_READONLY_PORT')))
     print("Gradio app ready")
+
+# Function to handle PDF uploads
+def handle_pdf_upload(pdf_files):
+    if pdf_files is not None:
+        staged_files_dir = '/home/cdsw/staged_files'
+        
+        # Initialize a list to store the results
+        result_messages = []
+        
+        # Iterate over the list of uploaded files
+        for pdf_file in pdf_files:
+            file_path = os.path.join(staged_files_dir, pdf_file.name)
+            print('working on', pdf_file.name)
+            # Move each file to the 'staged_files' directory
+            shutil.move(pdf_file.name, file_path)
+
+            # Print the final destination path for debugging
+            print(f"File moved to: {file_path}")
+            
+            # Add a success message for each file
+            result_messages.append(f"File {pdf_file.name} has been uploaded and moved to 'staged_files'.")
+
+        # Return the result messages as a single string
+        return "\n".join(result_messages)
+    
+    return "No files uploaded."
+
 
 # Helper function for generating responses for the QA app
 def get_responses(message, history, model, temperature, token_count, vector_db):
@@ -388,6 +427,11 @@ def get_llama2_response_with_context(question, context, temperature, token_count
     except Exception as e:
         print(e)
         return e
+
+if __name__ == "__main__":
+    main()
+
+
 
 
 if __name__ == "__main__":

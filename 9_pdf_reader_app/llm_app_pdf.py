@@ -1,4 +1,3 @@
-import os
 import gradio as gr
 import cmlapi
 import pinecone
@@ -15,15 +14,16 @@ import boto3
 from botocore.config import Config
 import chromadb
 from chromadb.utils import embedding_functions
-
 from huggingface_hub import hf_hub_download
+import shutil
+import os
 
 # Set any of these to False, if not using respective parts of the lab
 USE_PINECONE = True 
 USE_CHROMA = True 
 
 EMBEDDING_MODEL_REPO = "sentence-transformers/all-mpnet-base-v2"
-
+project_name = 'llm-hol-classic'
 
 if USE_PINECONE:
     PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
@@ -85,8 +85,9 @@ MODEL_ACCESS_KEY = selected_model.access_key
 MODEL_ENDPOINT = os.getenv("CDSW_API_URL").replace("https://", "https://modelservice.").replace("/api/v1", "/model?accessKey=")
 MODEL_ENDPOINT = MODEL_ENDPOINT + MODEL_ACCESS_KEY
 
-#MODEL_ACCESS_KEY = os.environ["CML_MODEL_KEY"]
-#MODEL_ENDPOINT = "https://modelservice.ml-8ac9c78c-674.se-sandb.a465-9q4k.cloudera.site/model?accessKey=" + MODEL_ACCESS_KEY
+## set up for running jobs via api
+
+proj_id = client.list_projects(search_filter=json.dumps({"name":project_name })).projects[0].id
 
 if os.environ.get("AWS_DEFAULT_REGION") == "":
     os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
@@ -169,9 +170,22 @@ def main():
         autofocus = True
         )
 
+        # Create upload button below the submit button
+    upload_demo = gr.Interface(
+        fn=handle_pdf_upload,
+        inputs=gr.File(label="Upload PDF(s)", multiselect=True),  # Allow multiple file uploads
+        outputs="text",
+    )
+    
+    # Combine the two interfaces
+    combined_demo = gr.TabbedInterface(
+        [demo, upload_demo],
+        ["Chat Interface", "Upload PDF"]
+    )
+    
     # Launch gradio app
     print("Launching gradio app")
-    demo.launch(share=True,   
+    combined_demo.launch(share=True,   
                 enable_queue=True,
                 show_error=True,
                 server_name='127.0.0.1',
@@ -179,6 +193,73 @@ def main():
                )
     print("Gradio app ready")
 
+# Function to handle PDF uploads
+def handle_pdf_upload(pdf_files):
+    if pdf_files is not None:
+        staged_files_dir = '/home/cdsw/staged_files'
+        print('desired file path is', staged_files_dir)
+        print('type of pdf_files', type(pdf_files))
+        
+        # Initialize a list to store the results
+        result_messages = ["Processing uploaded files... Please wait while the jobs are running."]
+
+        # Handle both single file and multiple files
+        if isinstance(pdf_files, list):
+            files_to_process = pdf_files
+        else:
+            files_to_process = [pdf_files]
+
+        # Iterate over the list of uploaded files
+        for pdf_file in files_to_process:
+            # Extract just the file name (without the temp directory path)
+            file_name = os.path.basename(pdf_file.name)
+            file_path = os.path.join(staged_files_dir, file_name)
+            print('current file is', file_name)
+            
+            # Move each file to the 'staged_files' directory
+            shutil.move(pdf_file.name, file_path)
+
+            # Print the final destination path for debugging
+            print(f"File moved to: {file_path}")
+            
+            # Add a success message for each file
+            result_messages.append(f"File {file_name} has been uploaded and moved to 'staged_files'.")
+        # let user know staring job chain
+        result_messages.append("Starting job chain...")
+        # Kick off the job chain after the upload
+        job_chain = ['pdf_reader', 'Populate Chroma Vector DB', 'populate pinecone']
+
+        for job in job_chain:
+            print(f'running {job}')
+            if job == 'pdf_reader':
+                target_job = client.list_jobs(proj_id, search_filter=json.dumps({"name": job}))
+                job_run = client.create_job_run(cmlapi.CreateJobRunRequest(),project_id = proj_id, job_id = target_job.jobs[0].id)
+                job_status = ''
+                while job_status != 'ENGINE_SUCCEEDED':
+                    # api forcing 50 job runs to show up per page. 
+                    # after 50 job runs, this will not work
+                    listed_jobs = client.list_job_runs(project_id=proj_id, job_id=target_job.jobs[0].id, page_size=50)
+                    job_status = listed_jobs.job_runs[-1].status
+
+                    if job_status == 'ENGINE_FAILED':
+                        print(f'{job} has failed.')
+                        raise RuntimeError(f"Job {job} failed. Halting the job chain.")
+                        
+                    # Update the user that the job is still processing
+                    result_messages.append(f"{job} is still processing... Please wait.")
+                    time.sleep(5)
+            else:
+                target_job = client.list_jobs(proj_id, search_filter=json.dumps({"name": job}))
+                job_run = client.create_job_run(cmlapi.CreateJobRunRequest(),project_id = proj_id, job_id = target_job.jobs[0].id)
+
+            print(f'{job} is completed')
+
+        # Return the result messages as a single string
+        return "\n".join(result_messages)
+    
+    return "No files uploaded."
+
+    
 # Helper function for generating responses for the QA app
 def get_responses(message, history, model, temperature, token_count, vector_db):
     

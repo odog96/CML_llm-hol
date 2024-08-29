@@ -24,6 +24,11 @@ model = AutoModel.from_pretrained(EMBEDDING_MODEL_REPO)
 # Define a function to create a Pinecone collection with the specified index name.
 def create_pinecone_collection(pc, PINECONE_INDEX):
     try:
+      
+        #PN Added functionality to drop PINECONE index
+        print(f"Dropping an index called '{PINECONE_INDEX}'...")
+        pc.delete_index(name=PINECONE_INDEX)
+      
         print(f"Creating 768-dimensional index called '{PINECONE_INDEX}'...")
         # Create the Pinecone index with the specified dimension.
         pc.create_index(name=PINECONE_INDEX,
