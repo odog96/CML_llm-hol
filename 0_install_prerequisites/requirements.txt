@@ -28,7 +28,7 @@ urllib3==1.25.4
 #
 ## Pinecone/Vector DB Requirements
 #pinecone-client==4.0.0
-pinecone-client==3.2.2
+pinecone-client==2.2.4
 sentence-transformers==2.2.2
 
 ## Chroma Vector DB Requirements

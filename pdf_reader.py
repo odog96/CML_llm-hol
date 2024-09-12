@@ -2,6 +2,7 @@ import os
 import re
 import shutil
 from pdfminer.high_level import extract_text
+import uuid
 
 # Configuration and path settings
 staged_folder = 'staged_files'  # Folder where files are staged for processing
@@ -49,7 +50,7 @@ def process_text(text):
     text = re.sub(r'[^A-Za-z0-9 .,?!]+', '', text)  # Remove unwanted characters
     return text
 
-def chunk_file_and_save(filename, doc_number):
+def chunk_file_and_save(filename):
     # Split the text into chunks of 500 words and save each chunk as a new file
     with open(filename, 'r') as f:
         content = f.read()
@@ -61,21 +62,36 @@ def chunk_file_and_save(filename, doc_number):
     # Loop through the text and chunk it
     while start_idx < len(word_list):
         end_idx = start_idx + 500
-        # Ensure that the chunk ends on a punctuation mark
-        while end_idx < len(word_list) and word_list[end_idx][-1] not in ['.', '!', '?']:
-            end_idx -= 1
-        end_idx += 1
 
-        # Create the chunk and save it as a new file
-        chunk = ' '.join(word_list[start_idx:end_idx])
-        with open(os.path.join(output_folder_data, f'doc_{doc_number}.txt'), 'w') as output_file:
-            output_file.write(chunk)
-            print('writing', output_file)
+        # Ensure that we are not going beyond the length of the word list
+        if end_idx >= len(word_list):
+            end_idx = len(word_list) - 1
 
-        start_idx = end_idx  # Move the start index for the next chunk
-        doc_number += 1  # Increment document number
-        print(doc_number)
-    return doc_number
+        # Try to adjust to the nearest punctuation mark, but only within the chunk range
+        for i in range(end_idx, start_idx, -1):
+            if word_list[i][-1] in ['.', '!', '?']:
+                end_idx = i
+                break
+
+        # Create the chunk
+        chunk = ' '.join(word_list[start_idx:end_idx + 1])  # Include end_idx in chunk
+
+        # Ensure the chunk is not empty
+        if chunk.strip():  # Check if chunk contains non-whitespace text
+            unique_filename = f"doc_{uuid.uuid4()}.txt"
+            with open(os.path.join(output_folder_data, unique_filename), 'w') as output_file:
+                output_file.write(chunk)
+                print(f'Writing: {unique_filename}')
+        else:
+            print(f"Skipping empty chunk at index {start_idx}")
+
+        # Move the start index for the next chunk
+        start_idx = end_idx + 1
+
+        # If fewer than 500 words left, we're at the end
+        if end_idx >= len(word_list) - 1:
+            print("Reached the end of the word list.")
+            break
 
 def delete_old_data():
     # Delete old data files and directories in the old_data_folder
@@ -125,8 +141,7 @@ if __name__ == '__main__':
         raise FileNotFoundError("No .txt files found in the 'staged_files' directory.")
 
     # Process each .txt file by chunking it into smaller files
-    doc_num = 1
     for file in txt_files:
         print(file)
-        doc_num = chunk_file_and_save(os.path.join(staged_folder, file), doc_num)
+        chunk_file_and_save(os.path.join(staged_folder, file))
         os.remove(os.path.join(staged_folder, file))  # Remove the processed .txt file

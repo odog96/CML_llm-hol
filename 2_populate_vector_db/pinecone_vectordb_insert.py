@@ -26,8 +26,8 @@ def create_pinecone_collection(pc, PINECONE_INDEX):
     try:
       
         #PN Added functionality to drop PINECONE index
-        print(f"Dropping an index called '{PINECONE_INDEX}'...")
-        pc.delete_index(name=PINECONE_INDEX)
+        #print(f"Dropping an index called '{PINECONE_INDEX}'...")
+        #pc.delete_index(name=PINECONE_INDEX)
       
         print(f"Creating 768-dimensional index called '{PINECONE_INDEX}'...")
         # Create the Pinecone index with the specified dimension.

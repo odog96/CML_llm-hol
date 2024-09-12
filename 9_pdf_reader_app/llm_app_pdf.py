@@ -23,7 +23,7 @@ USE_PINECONE = True
 USE_CHROMA = True 
 
 EMBEDDING_MODEL_REPO = "sentence-transformers/all-mpnet-base-v2"
-project_name = 'llm-hol-classic'
+#project_name = 'BBH-LLM-POV'
 
 if USE_PINECONE:
     PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
@@ -87,7 +87,14 @@ MODEL_ENDPOINT = MODEL_ENDPOINT + MODEL_ACCESS_KEY
 
 ## set up for running jobs via api
 
+## To-do add a dynamic project discover step
+## what project is this search
+project_name = 'BBH-LLM-POV'
+
+#proj_id = project.id
 proj_id = client.list_projects(search_filter=json.dumps({"name":project_name })).projects[0].id
+
+print("project_id",proj_id)
 
 if os.environ.get("AWS_DEFAULT_REGION") == "":
     os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
@@ -228,16 +235,22 @@ def handle_pdf_upload(pdf_files):
         result_messages.append("Starting job chain...")
         # Kick off the job chain after the upload
         job_chain = ['pdf_reader', 'Populate Chroma Vector DB', 'populate pinecone']
-
+        
         for job in job_chain:
             print(f'running {job}')
             if job == 'pdf_reader':
                 target_job = client.list_jobs(proj_id, search_filter=json.dumps({"name": job}))
+                print('job running is', job)
+                #print('target_job is',target_job)
+                print('target_job id',target_job.jobs[0].id)
+                #print('type of target_job.jobs',type(target_job.jobs))
                 job_run = client.create_job_run(cmlapi.CreateJobRunRequest(),project_id = proj_id, job_id = target_job.jobs[0].id)
                 job_status = ''
+              
                 while job_status != 'ENGINE_SUCCEEDED':
                     # api forcing 50 job runs to show up per page. 
                     # after 50 job runs, this will not work
+                    print('checking job status')
                     listed_jobs = client.list_job_runs(project_id=proj_id, job_id=target_job.jobs[0].id, page_size=50)
                     job_status = listed_jobs.job_runs[-1].status
 
