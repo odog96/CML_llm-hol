@@ -3,4 +3,10 @@
 !/.project-metadata.yaml
 chroma.log
 chroma-data/*
+# Ignore everything inside data but not the data folder itself
 data/*
+!data/
+
+# Ignore everything inside old_data but not the old_data folder itself
+old_data/*
+!old_data/
