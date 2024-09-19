@@ -20,7 +20,7 @@ import os
 
 # Set any of these to False, if not using respective parts of the lab
 USE_PINECONE = True 
-USE_CHROMA = True 
+USE_CHROMA = False 
 
 EMBEDDING_MODEL_REPO = "sentence-transformers/all-mpnet-base-v2"
 #project_name = 'BBH-LLM-POV'
@@ -89,7 +89,7 @@ MODEL_ENDPOINT = MODEL_ENDPOINT + MODEL_ACCESS_KEY
 
 ## To-do add a dynamic project discover step
 ## what project is this search
-project_name = 'BBH-LLM-POV'
+project_name = 'ozarate-llm-hol'
 
 #proj_id = project.id
 proj_id = client.list_projects(search_filter=json.dumps({"name":project_name })).projects[0].id
