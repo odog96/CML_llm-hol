@@ -92,3 +92,14 @@ tasks:
     memory: 4
     environment:
       TASK_TYPE: CREATE
+
+  - type: start_application
+    name: Chat with your PDFS
+    subdomain: cmlllm
+    script: 9_pdf_reader_app/llm_app_pdf.py
+    short_summary: Start CML LLM Chatbot application
+    long_summary: Upload your pdf docs and interact with them
+    cpu: 2
+    memory: 16
+    environment_variables:
+      TASK_TYPE: START_APPLICATION
