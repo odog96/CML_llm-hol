@@ -5,7 +5,13 @@ chroma.log
 chroma-data/*
 # Ignore everything inside data but not the data folder itself
 data/*
-!data/
+!data/.gitignore
+
+staged_files/*
+!staged_files/.gitignore
+
+staged_files_completed/*
+!staged_files_completed/.gitignore
 
 # Ignore everything inside old_data but not the old_data folder itself
 old_data/*
