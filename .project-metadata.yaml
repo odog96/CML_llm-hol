@@ -28,6 +28,7 @@ runtimes:
   - editor: JupyterLab
     kernel: Python 3.10
     edition: Nvidia GPU
+    version: 2024.02
   
 tasks:
   - type: run_session
@@ -47,14 +48,47 @@ tasks:
     cpu: 2
     memory: 4
 
+  # - type: create_job
+  #   name: Pull and Convert HTMLS to TXT
+  #   entity_label: htmls_to_txt
+  #   script: 2_populate_vector_db/html_to_text.py
+  #   arguments: None
+  #   short_summary: Create job to source htmls, download, and convert them to text. 
+  #   long_summary: Create job to source htmls, download, and convert them to text. Update html_links.txt with the htmls you wish to download and convert.
+  #   cpu: 2
+  #   memory: 4
+  #   environment:
+  #     TASK_TYPE: CREATE
+      
   - type: create_job
-    name: Pull and Convert HTMLS to TXT
-    entity_label: htmls_to_txt
-    script: 2_populate_vector_db/html_to_text.py
+    name: populate pinecone
+    entity_label: load_pinecone
+    script: 2_populate_vector_db/pinecone_vectordb_insert.py
     arguments: None
-    short_summary: Create job to source htmls, download, and convert them to text. 
-    long_summary: Create job to source htmls, download, and convert them to text. Update html_links.txt with the htmls you wish to download and convert.
+    short_summary: load knowledgebase to to pinecone
     cpu: 2
     memory: 4
     environment:
-      TASK_TYPE: CREATE/RUN_JOB
+      TASK_TYPE: CREATE
+
+  - type: create_job
+    name: Populate Chroma Vector DB
+    entity_label: load_chroma
+    script: 5_populate_local_chroma_db/populate_chroma_vectors.py
+    arguments: None
+    short_summary: load knowledgebase to to pinecone
+    cpu: 2
+    memory: 4
+    environment:
+      TASK_TYPE: CREATE
+
+  - type: create_job
+    name: pdf_reader
+    entity_label: read_pdf_files
+    script: pdf_reader-version-2.py
+    arguments: None
+    short_summary: read loaded pdf and convert to text chunks
+    cpu: 2
+    memory: 4
+    environment:
+      TASK_TYPE: CREATE
