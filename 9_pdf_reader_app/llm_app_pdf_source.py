@@ -175,7 +175,7 @@ def main():
                 model_choice = gr.Radio(
                     ['Local Mistral 7B', 'AWS Bedrock Claude v2.1'],
                     label="Select Foundational Model",
-                    value="AWS Bedrock Claude v2.1"
+                    value="Local Mistral 7B"
                 )
                 temperature = gr.Slider(
                     minimum=0.01, maximum=1.0, step=0.01, value=0.5,
@@ -190,7 +190,7 @@ def main():
                 vector_db_choice = gr.Radio(
                     ['None', 'Pinecone', 'Chroma'],
                     label="Vector Database Choices",
-                    value="None"
+                    value="Pinecone"
                 )
 
             send_button = gr.Button("Send")
@@ -205,12 +205,15 @@ def main():
                     message, history, model_choice_value, temperature_value,
                     tokens_value, vector_db_choice_value
                 )
+            
                 for new_history, context_chunk in gen:
-                    # Update the chatbot with new history
-                    if context_chunk is not None:
-                        # Update source_output with the context_chunk
-                        source_output.update(value=context_chunk)
-                    yield new_history, source_output.value  # Stream updates to the UI
+                    # If context_chunk is None, we use gr.update() to indicate no change
+                    if context_chunk is None:
+                        yield new_history, gr.update()
+                    else:
+                        # When context_chunk is available, we update the source_output
+                        print('within submit msg, context_chunk is:',context_chunk[0:10])
+                        yield new_history, context_chunk
 
             # Connect the function to the UI components
             send_button.click(
@@ -326,8 +329,8 @@ def get_responses(message, history, model, temperature, token_count, vector_db):
             for i in range(len(response)):
                 time.sleep(0.02)
                 bot_message = response[:i+1]
-                yield history + [(message, bot_message)], None
-            # Yield the final response and context_chunk
+                yield history + [(message, bot_message)], None  # Yield None for context_chunk
+            # After the response is complete, yield the context_chunk
             yield history + [(message, bot_message)], context_chunk
         elif vector_db == "Pinecone":
             context_chunk, source, score = get_nearest_chunk_from_pinecone_vectordb(index, message)
@@ -338,10 +341,10 @@ def get_responses(message, history, model, temperature, token_count, vector_db):
                 time.sleep(0.02)
                 bot_message = response[:i+1]
                 if i == len(response) - 1:
+                    print('string is',context_chunk[:4])
                     yield history + [(message, bot_message)], context_chunk
                 else:
                     yield history + [(message, bot_message)], None
-            yield history + [(message, bot_message)], context_chunk
         elif vector_db == "Chroma":
             context_chunk, source = get_nearest_chunk_from_chroma_vectordb(collection, message)
             response = get_llama2_response_with_context(message, context_chunk, temperature, token_count)
@@ -354,7 +357,7 @@ def get_responses(message, history, model, temperature, token_count, vector_db):
                     yield history + [(message, bot_message)], context_chunk
                 else:
                     yield history + [(message, bot_message)], None
-            yield history + [(message, bot_message)], context_chunk
+    # Handle other models if necessary
 
     
     elif model == "AWS Bedrock Claude v2.1":
