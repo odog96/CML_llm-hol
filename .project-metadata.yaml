@@ -11,9 +11,9 @@ environment_variables:
   # AWS_SECRET_ACCESS_KEY:
   #   default: ""
   #   description: "Secret ket for interacting with AWS Bedrock"
-  # AWS_DEFAULT_REGION:
-  #   default: "us-west-2"
-  #   description: "AWS Region where Bedrock models are available"
+  AWS_DEFAULT_REGION:
+    default: "us-east-1"
+    description: "AWS Region where Bedrock models are available"
   PINECONE_API_KEY:
     default: ""
     description: "API Keys for Pinecone service"
