@@ -160,44 +160,88 @@ def main():
     print("Configuring gradio app")
 
     DESC = "This AI-powered assistant showcases the flexibility of Cloudera Machine Learning to work with 3rd party solutions for LLMs and Vector Databases, as well as internally hosted models and vector DBs. The prototype does not yet implement chat history and session context - every prompt is treated as a brand new one."
-    
-    # Create the Gradio Interface
-    demo = gr.ChatInterface(
-        fn=get_responses, 
-        #examples=[["What is Cloudera?", "AWS Bedrock Claude v2.1", 0.5, "100"], ["What is Apache Spark?", 0.5, "100"], ["What is CML HoL?", 0.5, "100"]], 
-        title="Enterprise Custom Knowledge Base Chatbot",
-        description = DESC,
-        additional_inputs=[gr.Radio(['Local Mistral 7B', 'AWS Bedrock Claude v2.1'], label="Select Foundational Model", value="AWS Bedrock Claude v2.1"), 
-                           gr.Slider(minimum=0.01, maximum=1.0, step=0.01, value=0.5, label="Select Temperature (Randomness of Response)"),
-                           gr.Radio(["50", "100", "250", "500", "1000"], label="Select Number of Tokens (Length of Response)", value="250"),
-                           gr.Radio(['None', 'Pinecone', 'Chroma'], label="Vector Database Choices", value="None")],
-        retry_btn = None,
-        undo_btn = None,
-        clear_btn = None,
-        autofocus = True
-        )
 
-        # Create upload button below the submit button
-    upload_demo = gr.Interface(
-        fn=handle_pdf_upload,
-        inputs=gr.File(label="Upload PDF(s)", multiselect=True),  # Allow multiple file uploads
-        outputs="text",
+    # Create the Gradio Interface using Blocks
+    with gr.Blocks() as demo:
+        with gr.Tab("Chat Interface"):
+            gr.Markdown(DESC)
+
+            # Components
+            chatbot = gr.Chatbot()
+            message_input = gr.Textbox(show_label=False, placeholder="Type your message here")
+
+            # Additional inputs - make sure they are added to the UI
+            with gr.Row():
+                model_choice = gr.Radio(
+                    ['Local Mistral 7B', 'AWS Bedrock Claude v2.1'],
+                    label="Select Foundational Model",
+                    value="Local Mistral 7B"
+                )
+                temperature = gr.Slider(
+                    minimum=0.01, maximum=1.0, step=0.01, value=0.5,
+                    label="Select Temperature (Randomness of Response)"
+                )
+            with gr.Row():
+                tokens = gr.Radio(
+                    ["50", "100", "250", "500", "1000"],
+                    label="Select Number of Tokens (Length of Response)",
+                    value="250"
+                )
+                vector_db_choice = gr.Radio(
+                    ['None', 'Pinecone', 'Chroma'],
+                    label="Vector Database Choices",
+                    value="Pinecone"
+                )
+
+            send_button = gr.Button("Send")
+
+            # Collapsible source box
+            with gr.Accordion("Source Information (click to expand)", open=False):
+                source_output = gr.Textbox(label="Source", interactive=False)
+
+            # Function to handle user input and update outputs
+            def submit_message(message, history, model_choice_value, temperature_value, tokens_value, vector_db_choice_value):
+                gen = get_responses(
+                    message, history, model_choice_value, temperature_value,
+                    tokens_value, vector_db_choice_value
+                )
+            
+                for new_history, context_chunk in gen:
+                    # If context_chunk is None, we use gr.update() to indicate no change
+                    if context_chunk is None:
+                        yield new_history, gr.update()
+                    else:
+                        # When context_chunk is available, we update the source_output
+                        print('within submit msg, context_chunk is:',context_chunk[0:10])
+                        yield new_history, context_chunk
+
+            # Connect the function to the UI components
+            send_button.click(
+                fn=submit_message,
+                inputs=[message_input, chatbot, model_choice, temperature, tokens, vector_db_choice],
+                outputs=[chatbot, source_output]
+            )
+
+        with gr.Tab("Upload PDF"):
+            # Retain the PDF upload functionality
+            upload_demo = gr.Interface(
+                fn=handle_pdf_upload,
+                inputs=gr.File(label="Upload PDF(s)", multiselect=True),
+                outputs="text",
+            )
+            upload_demo.render()
+
+    print("Launching Gradio app")
+
+    demo.launch(
+        share=True,
+        enable_queue=True,
+        show_error=True,
+        # Adjust server_name and server_port as needed
+        server_name='127.0.0.1',
+        server_port=int(os.getenv('CDSW_READONLY_PORT', '7860'))
     )
-    
-    # Combine the two interfaces
-    combined_demo = gr.TabbedInterface(
-        [demo, upload_demo],
-        ["Chat Interface", "Upload PDF"]
-    )
-    
-    # Launch gradio app
-    print("Launching gradio app")
-    combined_demo.launch(share=True,   
-                enable_queue=True,
-                show_error=True,
-                server_name='127.0.0.1',
-                server_port=int(os.getenv('CDSW_READONLY_PORT'))
-               )
+
     print("Gradio app ready")
 
 # Function to handle PDF uploads
@@ -275,50 +319,46 @@ def handle_pdf_upload(pdf_files):
     
 # Helper function for generating responses for the QA app
 def get_responses(message, history, model, temperature, token_count, vector_db):
-    
+    if history is None:
+        history = []
     if model == "Local Mistral 7B":
-        
         if vector_db == "None":
             context_chunk = ""
             response = get_llama2_response_with_context(message, context_chunk, temperature, token_count)
-        
-            # Stream output to UI
+            bot_message = ""
             for i in range(len(response)):
                 time.sleep(0.02)
-                yield response[:i+1]
-                
+                bot_message = response[:i+1]
+                yield history + [(message, bot_message)], None  # Yield None for context_chunk
+            # After the response is complete, yield the context_chunk
+            yield history + [(message, bot_message)], context_chunk
         elif vector_db == "Pinecone":
-            # TODO: sub this with call to Pinecone to get context chunks
-            #response = "ERROR: Pinecone is not implemented for LLama yet"
-            
-            # Vector search the index
             context_chunk, source, score = get_nearest_chunk_from_pinecone_vectordb(index, message)
-            
-            # Call CML hosted model
             response = get_llama2_response_with_context(message, context_chunk, temperature, token_count)
-            
-            # Add reference to specific document in the response
-            response = f"{response}\n\n For additional info see: {url_from_source(source)}"
-            
-            # Stream output to UI
+            response = f"{response}\n\n For additional info see source information below"
+            bot_message = ""
             for i in range(len(response)):
                 time.sleep(0.02)
-                yield response[:i+1]
-                
+                bot_message = response[:i+1]
+                if i == len(response) - 1:
+                    print('string is',context_chunk[:4])
+                    yield history + [(message, bot_message)], context_chunk
+                else:
+                    yield history + [(message, bot_message)], None
         elif vector_db == "Chroma":
-            # Vector search in Chroma
             context_chunk, source = get_nearest_chunk_from_chroma_vectordb(collection, message)
-            
-            # Call CML hosted model
             response = get_llama2_response_with_context(message, context_chunk, temperature, token_count)
-            
-            # Add reference to specific document in the response
-            response = f"{response}\n\n For additional info see: {url_from_source(source)}"
-            
-            # Stream output to UI
+            response = f"{response}\n\n For additional info see source information below"
+            bot_message = ""
             for i in range(len(response)):
                 time.sleep(0.02)
-                yield response[:i+1]
+                bot_message = response[:i+1]
+                if i == len(response) - 1:
+                    yield history + [(message, bot_message)], context_chunk
+                else:
+                    yield history + [(message, bot_message)], None
+    # Handle other models if necessary
+
     
     elif model == "AWS Bedrock Claude v2.1":
         if vector_db == "None":

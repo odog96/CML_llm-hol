@@ -4,12 +4,23 @@ import shutil
 from pdfminer.high_level import extract_text
 import uuid
 
+
+#####################
+## updates 9/16:
+## remove the workflow that removes prior data chunk files prior to creating new ones
+## New flow will continue to add .txt chuncks incrementally
+#####################
+
+
+
 # Configuration and path settings
 staged_folder = 'staged_files'  # Folder where files are staged for processing
 completed_folder = 'staged_files_completed'  # Folder to move processed files
 output_folder_txt = 'output_text_files'  # Folder to store extracted text files (not used in code)
 output_folder_data = 'data'  # Folder to store chunked files
-old_data_folder = 'old_data'  # Folder to store old data for backup
+
+### staged for removal
+#old_data_folder = 'old_data'  # Folder to store old data for backup
 
 def extract_text_from_pdfs(stage_folder, completed_folder):
     for pdf_file in os.listdir(stage_folder):
@@ -34,8 +45,6 @@ def extract_text_from_pdfs(stage_folder, completed_folder):
                 print(f"Written text to {output_file_name}")  # Debug: Text written to file
                 
                 # Moving the processed PDF to the completed folder
-                if not os.path.exists(completed_folder):
-                    os.makedirs(completed_folder)
                 shutil.move(pdf_path, os.path.join(completed_folder, pdf_file))
                 print(f"Moved {pdf_file} to {completed_folder}")  # Debug: File moved to completed folder
             
@@ -93,41 +102,36 @@ def chunk_file_and_save(filename):
             print("Reached the end of the word list.")
             break
 
-def delete_old_data():
-    # Delete old data files and directories in the old_data_folder
-    for filename in os.listdir(old_data_folder):
-        file_path = os.path.join(old_data_folder, filename)
+### staged for removal
 
-        if os.path.isfile(file_path):
-            os.remove(file_path)  # Remove the file
-        elif os.path.isdir(file_path):
-            shutil.rmtree(file_path)  # Remove the directory and all its contents
+# def delete_old_data():
+#     # Delete old data files and directories in the old_data_folder
+#     for filename in os.listdir(old_data_folder):
+#         file_path = os.path.join(old_data_folder, filename)
+
+#         if os.path.isfile(file_path):
+#             os.remove(file_path)  # Remove the file
+#         elif os.path.isdir(file_path):
+#             shutil.rmtree(file_path)  # Remove the directory and all its contents
 
 if __name__ == '__main__':
     # Main processing logic
-
-    # Ensure the completed folder exists
-    if not os.path.exists(completed_folder):
-        print("Trying to create:", completed_folder)
-        os.makedirs(completed_folder)
+    # Ensure output folder and completed folders exist
+    for dir_name in [output_folder_data, completed_folder]:
+        if not os.path.exists(dir_name):
+            print("Trying to create:", dir_name)
+            os.makedirs(dir_name)
+            
     extract_text_from_pdfs(staged_folder, completed_folder)  # Extract text from PDFs
 
-    # Ensure output and old data folders exist
-    for dir_name in [output_folder_data, old_data_folder]:
-        if not os.path.exists(dir_name):
-            os.makedirs(dir_name)
-
-    # Delete old data if any exists in the old_data_folder
-    if os.listdir(old_data_folder):
-        delete_old_data()
-
+    ## staged for removal
+    
     # Move existing files in the output folder to old data folder
-    if os.listdir(output_folder_data):
-        for filename in os.listdir(output_folder_data):
-            dst_path = os.path.join(old_data_folder, filename)
-            if os.path.exists(dst_path):
-                os.remove(dst_path)
-            shutil.move(os.path.join(output_folder_data, filename), dst_path)
+    # for filename in os.listdir(output_folder_data):
+    #     dst_path = os.path.join(old_data_folder, filename)
+    #     if os.path.exists(dst_path):
+    #         os.remove(dst_path)
+    #     shutil.move(os.path.join(output_folder_data, filename), dst_path)
 
     # Check if the staged folder exists
     if not os.path.exists(staged_folder):
