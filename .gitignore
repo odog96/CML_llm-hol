@@ -7,12 +7,13 @@ chroma-data/*
 data/*
 !data/.gitignore
 
+# Ignore all files inside staged_files but not the folder itself
 staged_files/*
 !staged_files/.gitignore
+!staged_files/
 
+# Ignore all files inside staged_files_completed but not the folder itself
 staged_files_completed/*
 !staged_files_completed/.gitignore
+!staged_files_completed/
 
-# Ignore everything inside old_data but not the old_data folder itself
-old_data/*
-!old_data/
