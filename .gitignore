@@ -8,12 +8,6 @@ data/*
 !data/.gitignore
 
 # Ignore all files inside staged_files but not the folder itself
-staged_files/*
-!staged_files/.gitignore
-!staged_files/
 
 # Ignore all files inside staged_files_completed but not the folder itself
-staged_files_completed/*
-!staged_files_completed/.gitignore
-!staged_files_completed/
 
