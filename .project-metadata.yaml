@@ -85,7 +85,7 @@ tasks:
   - type: create_job
     name: pdf_reader
     entity_label: read_pdf_files
-    script: pdf_reader-version-2.py
+    script: pdf_reader.py
     arguments: None
     short_summary: read loaded pdf and convert to text chunks
     cpu: 2
