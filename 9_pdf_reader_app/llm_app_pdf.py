@@ -18,6 +18,9 @@ from huggingface_hub import hf_hub_download
 import shutil
 import os
 
+# fixed duplicate pdf upload docs
+
+
 # Set any of these to False, if not using respective parts of the lab
 USE_PINECONE = True 
 USE_CHROMA = False 
@@ -228,8 +231,9 @@ def main():
                 fn=handle_pdf_upload,
                 inputs=gr.File(label="Upload PDF(s)", multiselect=True),
                 outputs="text",
+                allow_flagging="never"  # Remove the flagging option
             )
-            upload_demo.render()
+            #upload_demo.render() this was creating a duplicate upload 
 
     print("Launching Gradio app")
 
@@ -330,8 +334,7 @@ def get_responses(message, history, model, temperature, token_count, vector_db):
                 time.sleep(0.02)
                 bot_message = response[:i+1]
                 yield history + [(message, bot_message)], None  # Yield None for context_chunk
-            # After the response is complete, yield the context_chunk
-            yield history + [(message, bot_message)], context_chunk
+
         elif vector_db == "Pinecone":
             context_chunk, source, score = get_nearest_chunk_from_pinecone_vectordb(index, message)
             response = get_llama2_response_with_context(message, context_chunk, temperature, token_count)
@@ -368,7 +371,8 @@ def get_responses(message, history, model, temperature, token_count, vector_db):
             # Stream output to UI
             for i in range(len(response)):
                 time.sleep(0.02)
-                yield response[:i+1]
+                bot_message = response[:i+1]
+                yield history + [(message, bot_message)], None  # Yield None for context_chunk
                 
         elif vector_db == "Pinecone":
             # Vector search the index
@@ -381,8 +385,13 @@ def get_responses(message, history, model, temperature, token_count, vector_db):
             
             # Stream output to UI
             for i in range(len(response)):
-                time.sleep(0.01)
-                yield response[:i+1]
+                time.sleep(0.02)
+                bot_message = response[:i+1]
+                if i == len(response) - 1:
+                    print('string is',context_chunk[:4])
+                    yield history + [(message, bot_message)], context_chunk
+                else:
+                    yield history + [(message, bot_message)], None
                 
         elif vector_db == "Chroma":
             # Vector search in Chroma
@@ -397,7 +406,12 @@ def get_responses(message, history, model, temperature, token_count, vector_db):
             # Stream output to UI
             for i in range(len(response)):
                 time.sleep(0.02)
-                yield response[:i+1]
+                bot_message = response[:i+1]
+                if i == len(response) - 1:
+                    print('string is',context_chunk[:4])
+                    yield history + [(message, bot_message)], context_chunk
+                else:
+                    yield history + [(message, bot_message)], None
 
 def url_from_source(source):
     url = source.replace('/home/cdsw/data/https:/', 'https://').replace('.txt', '.html')
