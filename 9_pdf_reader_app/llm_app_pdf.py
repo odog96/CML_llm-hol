@@ -314,6 +314,7 @@ def handle_pdf_upload(pdf_files):
                 job_run = client.create_job_run(cmlapi.CreateJobRunRequest(),project_id = proj_id, job_id = target_job.jobs[0].id)
 
             print(f'{job} is completed')
+            result_messages.append(f"All jobs completed")
 
         # Return the result messages as a single string
         return "\n".join(result_messages)
