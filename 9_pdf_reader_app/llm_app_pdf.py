@@ -23,54 +23,11 @@ import os
 
 # Set any of these to False, if not using respective parts of the lab
 USE_PINECONE = True 
-USE_CHROMA = False 
+USE_CHROMA = True 
 
-EMBEDDING_MODEL_REPO = "sentence-transformers/all-mpnet-base-v2"
+#EMBEDDING_MODEL_REPO = "sentence-transformers/all-mpnet-base-v2"
 #project_name = 'BBH-LLM-POV'
 
-if USE_PINECONE:
-    PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
-    PINECONE_INDEX = os.getenv('PINECONE_INDEX')
-
-    print("initialising Pinecone connection...")
-    pc = Pinecone(api_key=PINECONE_API_KEY)
-    print("Pinecone initialised")
-
-    print(f"Getting '{PINECONE_INDEX}' as object...")
-    index = pc.Index(PINECONE_INDEX)
-    print("Success")
-
-    # Get latest statistics from index
-    current_collection_stats = index.describe_index_stats()
-    print('Total number of embeddings in Pinecone index is {}.'.format(current_collection_stats.get('total_vector_count')))
-
-    
-if USE_CHROMA:
-    # Connect to local Chroma data
-    chroma_client = chromadb.PersistentClient(path="/home/cdsw/chroma-data")
-    
-    EMBEDDING_MODEL_REPO = "sentence-transformers/all-mpnet-base-v2"
-    EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
-    EMBEDDING_FUNCTION = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBEDDING_MODEL_NAME)
-
-    COLLECTION_NAME = 'cml-default'
-
-    print("initialising Chroma DB connection...")
-
-    print(f"Getting '{COLLECTION_NAME}' as object...")
-    try:
-        chroma_client.get_collection(name=COLLECTION_NAME, embedding_function=EMBEDDING_FUNCTION)
-        print("Success")
-        collection = chroma_client.get_collection(name=COLLECTION_NAME, embedding_function=EMBEDDING_FUNCTION)
-    except:
-        print("Creating new collection...")
-        collection = chroma_client.create_collection(name=COLLECTION_NAME, embedding_function=EMBEDDING_FUNCTION)
-        print("Success")
-
-    # Get latest statistics from index
-    current_collection_stats = collection.count()
-    print('Total number of embeddings in Chroma DB index is ' + str(current_collection_stats))
-    
     
 ## TO DO GET MODEL DEPLOYMENT
 ## Need to get the below prgramatically in the future iterations
@@ -195,6 +152,12 @@ def main():
                     label="Vector Database Choices",
                     value="Pinecone"
                 )
+                embedding_model = gr.Radio(
+                    ['all-mpnet-base-v2','LaBSE','facebook-dpr-ctx_encoder-multiset-base',
+'msmarco-bert-base-dot-v5'],
+                    label="Embedding Model Choices - pdf upload must match query model",
+                    value='all-mpnet-base-v2'
+                )
 
             send_button = gr.Button("Send")
 
@@ -203,7 +166,16 @@ def main():
                 source_output = gr.Textbox(label="Source", interactive=False)
 
             # Function to handle user input and update outputs
-            def submit_message(message, history, model_choice_value, temperature_value, tokens_value, vector_db_choice_value):
+            def submit_message(message, history, model_choice_value, temperature_value, tokens_value, vector_db_choice_value, embedding_model_value):
+                global EMBEDDING_MODEL_NAME
+                global EMBEDDING_MODEL_REPO
+                
+                EMBEDDING_MODEL_NAME = embedding_model_value
+                EMBEDDING_MODEL_REPO = f"sentence-transformers/{embedding_model_value}"
+                
+                # define environment variable each time
+                os.environ['EMBEDDING_MODEL_REPO'] = EMBEDDING_MODEL_REPO   
+                
                 gen = get_responses(
                     message, history, model_choice_value, temperature_value,
                     tokens_value, vector_db_choice_value
@@ -221,15 +193,32 @@ def main():
             # Connect the function to the UI components
             send_button.click(
                 fn=submit_message,
-                inputs=[message_input, chatbot, model_choice, temperature, tokens, vector_db_choice],
+                inputs=[message_input, chatbot, model_choice, temperature, tokens, vector_db_choice,embedding_model],
                 outputs=[chatbot, source_output]
             )
 
+         
+        
         with gr.Tab("Upload PDF"):
-            # Retain the PDF upload functionality
+            # Function to handle PDF upload and set EMBEDDING_MODEL_REPO
+            def handle_pdf_upload_with_model(pdf_files, embedding_model_value):
+                global EMBEDDING_MODEL_REPO
+                
+                # Set EMBEDDING_MODEL_REPO based on the embedding_model_value
+                EMBEDDING_MODEL_REPO = f"sentence-transformers/{embedding_model_value}"
+                
+                print("EMBEDDING_MODEL_REPO",EMBEDDING_MODEL_REPO)
+                
+                # Set the environment variable
+                os.environ['EMBEDDING_MODEL_REPO'] = EMBEDDING_MODEL_REPO
+
+                # Call the original PDF handling function
+                return handle_pdf_upload(pdf_files)
+
+            # Retain the PDF upload functionality and connect embedding model
             upload_demo = gr.Interface(
-                fn=handle_pdf_upload,
-                inputs=gr.File(label="Upload PDF(s)", multiselect=True),
+                fn=handle_pdf_upload_with_model,
+                inputs=[gr.File(label="Upload PDF(s)", multiselect=True), embedding_model],
                 outputs="text",
                 allow_flagging="never"  # Remove the flagging option
             )
@@ -248,6 +237,29 @@ def main():
 
     print("Gradio app ready")
 
+    
+
+# if USE_PINECONE:
+#     PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
+#     PINECONE_INDEX = os.getenv('PINECONE_INDEX')
+
+#     print("initialising Pinecone connection...")
+#     pc = Pinecone(api_key=PINECONE_API_KEY)
+#     print("Pinecone initialised")
+
+#     print(f"Getting '{PINECONE_INDEX}' as object...")
+#     index = pc.Index(PINECONE_INDEX)
+#     print("Success")
+
+#     # Get latest statistics from index
+#     current_collection_stats = index.describe_index_stats()
+#     print('Total number of embeddings in Pinecone index is {}.'.format(current_collection_stats.get('total_vector_count')))
+
+    
+#if USE_CHROMA:
+
+        
+    
 # Function to handle PDF uploads
 def handle_pdf_upload(pdf_files):
     if pdf_files is not None:
@@ -337,6 +349,23 @@ def get_responses(message, history, model, temperature, token_count, vector_db):
                 yield history + [(message, bot_message)], None  # Yield None for context_chunk
 
         elif vector_db == "Pinecone":
+            
+            PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
+            PINECONE_INDEX = os.getenv('PINECONE_INDEX')
+
+            print("initialising Pinecone connection...")
+            pc = Pinecone(api_key=PINECONE_API_KEY)
+            print("Pinecone initialised")
+
+            print(f"Getting '{PINECONE_INDEX}' as object...")
+            index = pc.Index(PINECONE_INDEX)
+            print("Success")
+
+            # Get latest statistics from index
+            current_collection_stats = index.describe_index_stats()
+            print('Total number of embeddings in Pinecone index is {}.'.format(current_collection_stats.get('total_vector_count')))
+
+            
             context_chunk, source, score = get_nearest_chunk_from_pinecone_vectordb(index, message)
             response = get_llama2_response_with_context(message, context_chunk, temperature, token_count)
             response = f"{response}\n\n For additional info see source information below"
@@ -350,6 +379,32 @@ def get_responses(message, history, model, temperature, token_count, vector_db):
                 else:
                     yield history + [(message, bot_message)], None
         elif vector_db == "Chroma":
+            
+                # Connect to local Chroma data
+            chroma_client = chromadb.PersistentClient(path="/home/cdsw/chroma-data")
+
+            # EMBEDDING_MODEL_REPO = "sentence-transformers/all-mpnet-base-v2"
+            # EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
+            EMBEDDING_FUNCTION = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBEDDING_MODEL_NAME)
+
+            COLLECTION_NAME = 'cml-default'
+
+            print("initialising Chroma DB connection...")
+
+            print(f"Getting '{COLLECTION_NAME}' as object...")
+            try:
+                chroma_client.get_collection(name=COLLECTION_NAME, embedding_function=EMBEDDING_FUNCTION)
+                print("Success")
+                collection = chroma_client.get_collection(name=COLLECTION_NAME, embedding_function=EMBEDDING_FUNCTION)
+            except:
+                print("Creating new collection...")
+                collection = chroma_client.create_collection(name=COLLECTION_NAME, embedding_function=EMBEDDING_FUNCTION)
+                print("Success")
+
+            # Get latest statistics from index
+            current_collection_stats = collection.count()
+            print('Total number of embeddings in Chroma DB index is ' + str(current_collection_stats))
+            
             context_chunk, source = get_nearest_chunk_from_chroma_vectordb(collection, message)
             response = get_llama2_response_with_context(message, context_chunk, temperature, token_count)
             response = f"{response}\n\n For additional info see source information below"
@@ -376,6 +431,22 @@ def get_responses(message, history, model, temperature, token_count, vector_db):
                 yield history + [(message, bot_message)], None  # Yield None for context_chunk
                 
         elif vector_db == "Pinecone":
+            
+            PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
+            PINECONE_INDEX = os.getenv('PINECONE_INDEX')
+
+            print("initialising Pinecone connection...")
+            pc = Pinecone(api_key=PINECONE_API_KEY)
+            print("Pinecone initialised")
+
+            print(f"Getting '{PINECONE_INDEX}' as object...")
+            index = pc.Index(PINECONE_INDEX)
+            print("Success")
+
+            # Get latest statistics from index
+            current_collection_stats = index.describe_index_stats()
+            print('Total number of embeddings in Pinecone index is {}.'.format(current_collection_stats.get('total_vector_count')))
+            
             # Vector search the index
             context_chunk, source, score = get_nearest_chunk_from_pinecone_vectordb(index, message)
             
@@ -395,6 +466,31 @@ def get_responses(message, history, model, temperature, token_count, vector_db):
                     yield history + [(message, bot_message)], None
                 
         elif vector_db == "Chroma":
+            
+            chroma_client = chromadb.PersistentClient(path="/home/cdsw/chroma-data")
+
+            # EMBEDDING_MODEL_REPO = "sentence-transformers/all-mpnet-base-v2"
+            # EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
+            EMBEDDING_FUNCTION = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBEDDING_MODEL_NAME)
+
+            COLLECTION_NAME = 'cml-default'
+
+            print("initialising Chroma DB connection...")
+
+            print(f"Getting '{COLLECTION_NAME}' as object...")
+            try:
+                chroma_client.get_collection(name=COLLECTION_NAME, embedding_function=EMBEDDING_FUNCTION)
+                print("Success")
+                collection = chroma_client.get_collection(name=COLLECTION_NAME, embedding_function=EMBEDDING_FUNCTION)
+            except:
+                print("Creating new collection...")
+                collection = chroma_client.create_collection(name=COLLECTION_NAME, embedding_function=EMBEDDING_FUNCTION)
+                print("Success")
+
+            # Get latest statistics from index
+            current_collection_stats = collection.count()
+            print('Total number of embeddings in Chroma DB index is ' + str(current_collection_stats))
+            
             # Vector search in Chroma
             context_chunk, source = get_nearest_chunk_from_chroma_vectordb(collection, message)
             
@@ -458,7 +554,6 @@ def get_nearest_chunk_from_chroma_vectordb(collection, question):
     ## This query returns the two most similar results from a semantic search
     response = collection.query(
                     query_texts=[question],
-                    n_results=1
                     # where={"metadata_field": "is_equal_to_this"}, # optional filter
                     # where_document={"$contains":"search_string"}  # optional filter
     )

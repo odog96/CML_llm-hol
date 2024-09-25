@@ -15,7 +15,11 @@ PINECONE_INDEX = os.getenv('PINECONE_INDEX')
 dimension = 768
 
 # Set embedding model
-EMBEDDING_MODEL_REPO = "sentence-transformers/all-mpnet-base-v2"
+# EMBEDDING_MODEL_REPO = "sentence-transformers/all-mpnet-base-v2"
+# Set embedding model using environment variable, default to "sentence-transformers/all-mpnet-base-v2"
+EMBEDDING_MODEL_REPO = os.getenv('EMBEDDING_MODEL_REPO', "sentence-transformers/all-mpnet-base-v2")
+
+print("EMBEDDING_MODEL_REPO",EMBEDDING_MODEL_REPO)
 
 # Load the model stored in models/embedding-model
 tokenizer = AutoTokenizer.from_pretrained(EMBEDDING_MODEL_REPO)

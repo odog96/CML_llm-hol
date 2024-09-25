@@ -8,8 +8,16 @@ from pathlib import Path
 chroma_client = chromadb.PersistentClient(path="/home/cdsw/chroma-data")
 
 from chromadb.utils import embedding_functions
-EMBEDDING_MODEL_REPO = "sentence-transformers/all-mpnet-base-v2"
-EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
+# EMBEDDING_MODEL_REPO = "sentence-transformers/all-mpnet-base-v2"
+# EMBEDDING_MODEL_NAME = "all-mpnet-base-v2"
+
+# Get the EMBEDDING_MODEL_REPO from the environment variable (with a default fallback)
+EMBEDDING_MODEL_REPO = os.getenv('EMBEDDING_MODEL_REPO', 'sentence-transformers/all-mpnet-base-v2')
+
+# Set EMBEDDING_MODEL_NAME by extracting the model name from EMBEDDING_MODEL_REPO
+EMBEDDING_MODEL_NAME = EMBEDDING_MODEL_REPO.split('/')[-1]
+
+
 EMBEDDING_FUNCTION = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBEDDING_MODEL_NAME)
 
 COLLECTION_NAME = 'cml-default'
