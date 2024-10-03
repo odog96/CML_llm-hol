@@ -604,15 +604,16 @@ def get_bedrock_response_with_context(question, context, temperature, token_coun
 # Pass through user input to LLM model with enhanced prompt and stop tokens
 def get_llama2_response_with_context(question, context, temperature, token_count):
     
-    llama_sys = f"<s>[INST]You are a helpful, respectful and honest assistant. If you are unsure about an answer, truthfully say \"I don't know\"."
+    llama_sys = f"<s>[INST]You are a helpful, respectful and honest assistant. If you are unsure about an answer, truthfully say 'I don't know'."
     
     if context == "":
         # Following LLama's spec for prompt engineering
         llama_inst = f"Please answer the user question.[/INST]</s>"
-        question_and_context = f"{llama_sys} {llama_inst} \n [INST] {question} [/INST]"
+        question_and_context = f"{llama_sys} {llama_inst} [INST] {question} [/INST]"
     else:
         # Add context to the question
-        llama_inst = f"Anser the user's question based on the folloing information:\n {context}[/INST]</s>"
+        #llama_inst = f"Anser the user's question based on the folloing information:\n {context}[/INST]</s>"
+        llama_inst = f"Anser the user's question based on the folloing information: {context}[/INST]</s>"
         question_and_context = f"{llama_sys} {llama_inst} \n[INST] {question} [/INST]"
         
     try:
