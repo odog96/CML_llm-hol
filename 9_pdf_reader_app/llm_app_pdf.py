@@ -217,11 +217,18 @@ def main():
 
             # Retain the PDF upload functionality and connect embedding model
             upload_demo = gr.Interface(
-                fn=handle_pdf_upload_with_model,
-                inputs=[gr.File(label="Upload PDF(s)", multiselect=True), embedding_model],
-                outputs="text",
-                allow_flagging="never"  # Remove the flagging option
-            )
+    fn=handle_pdf_upload_with_model,
+    inputs=[
+        gr.File(
+            label="Upload PDF(s)", 
+            file_count="multiple",  # This is the key change - more reliable than multiselect=True
+            file_types=[".pdf"]
+        ),
+        embedding_model
+    ],
+    outputs="text",
+    allow_flagging="never"
+)
             #upload_demo.render() this was creating a duplicate upload 
 
     print("Launching Gradio app")
